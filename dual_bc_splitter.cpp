@@ -51,7 +51,7 @@ class dual_bc_splitter {
         void get_lines_to_vec(fastq_reader& lreader, std::vector<std::string>& lvec, 
             int lcount);
         std::string write_entry(const match_t& bc1_tuple, const match_t& bc2_tuple);
-        void writeMapsToFile();
+        void writeMapsToFile(std::ofstream& count_log);
         bool has_suffix(const std::string &str, const std::string &suffix);
         void compress_files();
     private:
@@ -386,7 +386,7 @@ void dual_bc_splitter::write_for_single_file(std::string& barcode,
     }
 }
 
-void dual_bc_splitter::writeMapsToFile() {
+void dual_bc_splitter::writeMapsToFile(std::ofstream& count_log) {
 
     for (auto& kv : r1QMap) {
         std::string barcode = kv.first;
@@ -395,8 +395,15 @@ void dual_bc_splitter::writeMapsToFile() {
         std::string bcfile1;
         std::string bcfile2;
 
-        if (barcode.compare("no_match") == 0 || 
+        std::string unified_barcode;
+        if (barcode.compare("no_match") == 0 ||
             barcode.compare("ambiguous") == 0 ) {
+            unified_barcode = "unmatched";
+        } else {
+            unified_barcode = barcode;
+        }
+
+        if (unified_barcode.compare("unmatched") == 0 ) {
             file1 = outdirpath + "/" + prefix_str + ".unmatched.1.fastq";
             file2 = outdirpath + "/" + prefix_str + ".unmatched.2.fastq";
             bcfile1 = outdirpath + "/" + prefix_str + ".unmatched.barcode_1.fastq";
@@ -410,8 +417,8 @@ void dual_bc_splitter::writeMapsToFile() {
         }
 
         std::ios_base::openmode lmode;
-        if (outfile_set.count(barcode) == 0) {
-            outfile_set.insert(barcode);
+        if (outfile_set.count(unified_barcode) == 0) {
+            outfile_set.insert(unified_barcode);
             lmode = std::ofstream::out|std::ofstream::trunc;
         } else {
             lmode = std::ofstream::out|std::ofstream::app;
@@ -435,6 +442,10 @@ void dual_bc_splitter::writeMapsToFile() {
         write_for_single_file(barcode, r2QMap, of_r2);
         write_for_single_file(barcode, bc1QMap, of_bc1);
         write_for_single_file(barcode, bc2QMap, of_bc2);
+        count_log << "barcode: " << barcode << " bc1_written_reads: " << bc1QMap[barcode].size()/4 << "\n";
+        count_log << "barcode: " << barcode << " bc2_written_reads: " << bc2QMap[barcode].size()/4 << "\n";
+        count_log << "barcode: " << barcode << " r1_written_reads: " << r1QMap[barcode].size()/4 << "\n";
+        count_log << "barcode: " << barcode << " r2_written_reads: " << r2QMap[barcode].size()/4 << "\n";
     }
 
     // Clear all contents of the read maps
@@ -463,6 +474,10 @@ void dual_bc_splitter::core_engine() {
     fastq_reader bc2_reader(bc2_read_str);
     fastq_reader reader1(read1_str);
     fastq_reader reader2(read2_str);
+
+
+    std::string count_log_file = outdirpath + "/" + prefix_str + "_logfile.txt";
+    std::ofstream count_log(count_log_file);
 
     const unsigned long MB_SIZE = 1024 * 1024;
     unsigned long total_allowed = allowed_MB * MB_SIZE;
@@ -507,7 +522,7 @@ void dual_bc_splitter::core_engine() {
         totalcap += allcap;
 
         if (totalcap > total_allowed) {
-            writeMapsToFile();
+            writeMapsToFile(count_log);
             // Write all the data in the respective files sequentially
             totalcap = 0;
         }
@@ -529,7 +544,7 @@ void dual_bc_splitter::core_engine() {
         }
         if (read_count == total_run) {break;}
     }
-    writeMapsToFile();
+    writeMapsToFile(count_log);
     std::string outfile_str = outdirpath + "/" + prefix_str + "_outfile.txt";
 	
     write_outfile(outfile_str);
@@ -591,7 +606,7 @@ int main(int argc, char* argv[]) {
 	try {
         csm.load_barcodes();
 		csm.core_engine();
-        csm.compress_files();
+        //csm.compress_files();
 	} catch(std::invalid_argument& e) {
         std::cerr << "error: " << e.what() << "\n";
 		//lbs.print_help();
