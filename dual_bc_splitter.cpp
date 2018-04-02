@@ -342,7 +342,7 @@ void dual_bc_splitter::write_outfile(std::string outfile) {
     std::ofstream outf(outfile);
     if (outf.is_open()) {
         // Write header
-        outf << "bc1_index" << "\t" << "bc2_index" << "\t" 
+        outf << "bc1_index" << "\t" << "bc2_index" << "\t" << "bc1_bc2_seq" << "\t" 
              << "read_count_exact" << "\t" << "read_count_nonexact" 
              << "\t" << "read_count_all" << "\n";
         std::vector<std::string> bc2_vec = bc2_loader.get_name_vector();
@@ -361,11 +361,17 @@ void dual_bc_splitter::write_outfile(std::string outfile) {
                 std::string val_exact_str = std::to_string(val_exact);
                 std::string val_nonexact_str = std::to_string(val_nonexact);
                 std::string val_all_str = std::to_string(val_all);
-
-                std::string out_str = bc1_ + "\t" + bc2_ + "\t" + val_exact_str + "\t" + val_nonexact_str + "\t" + val_all_str;
+                std::string bc1_val = bc1_loader.val_from_bc_map(bc1_);
+                std::string bc2_val = bc2_loader.val_from_bc_map(bc2_);
+                std::string bc1_bc2_seq = bc1_val + "_" + bc2_val;
+                std::string out_str = bc1_ + "\t" + bc2_ + "\t" + bc1_bc2_seq +
+                    "\t" + val_exact_str + "\t" + val_nonexact_str + "\t" + 
+                    val_all_str;
                 outf << out_str << "\n";   
             }
         } 
+        outf << "ambiguous\t" << ambiguous_count << "\n";
+        outf << "no_match\t" << no_match_count << "\n";
 
         outf.close();
     } else {
@@ -399,11 +405,12 @@ void dual_bc_splitter::writeMapsToFile(std::ofstream& count_log) {
         if (barcode.compare("no_match") == 0 ||
             barcode.compare("ambiguous") == 0 ) {
             unified_barcode = "unmatched";
+          
         } else {
             unified_barcode = barcode;
         }
 
-        if (unified_barcode.compare("unmatched") == 0 ) {
+        if (unified_barcode.compare("unmatched") == 0) {
             file1 = outdirpath + "/" + prefix_str + ".unmatched.1.fastq";
             file2 = outdirpath + "/" + prefix_str + ".unmatched.2.fastq";
             bcfile1 = outdirpath + "/" + prefix_str + ".unmatched.barcode_1.fastq";
@@ -606,7 +613,7 @@ int main(int argc, char* argv[]) {
 	try {
         csm.load_barcodes();
 		csm.core_engine();
-        //csm.compress_files();
+        csm.compress_files();
 	} catch(std::invalid_argument& e) {
         std::cerr << "error: " << e.what() << "\n";
 		//lbs.print_help();
