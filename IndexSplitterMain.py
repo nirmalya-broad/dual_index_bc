@@ -22,6 +22,7 @@ parser.add_argument("-m", "--memory", type=int, default=8000,
                     help="Amount of memory to allocate")
 parser.add_argument('--no_qsub', dest = 'use_qsub', action = 'store_false', default = True, help = 'Does not submit qsub jobs.' )
 parser.add_argument('--total_run', dest = 'total_run', type = int, default = -1, help = 'Run for top read_count number of reads (if -1, run for all reads)' )
+parser.add_argument('--run_time_ind', dest = 'run_time_ind', type = int, default = 24, help = 'Run time for individual jobs (default: 24 hours)' )
 
 args = parser.parse_args()
 
@@ -34,6 +35,7 @@ use_qsub = args.use_qsub
 total_run = args.total_run
 suffix_s1 = args.suffix_s1
 suffix_s2 = args.suffix_s2
+run_time_ind = args.run_time_ind
 
 ldelim = '/'
 
@@ -62,8 +64,10 @@ for filename in os.listdir(indir):
         lprefix = filename.replace(lsuffix_s2, '')
     if lprefix and lprefix not in prefix_set:
         prefix_set.add(lprefix)
-    print(prefix_set)
 
+print(".........")
+print(prefix_set)
+print(".........")
 
 
 # For each element in the prefix_set submit a job to the cluster
@@ -127,6 +131,7 @@ joblist_cmd = UGER_cbp + " --cmds_file " + joblist_path + \
                                 " --batch_size 1" + \
                                 " --queue long" + \
                                 " --memory 16" + \
+                                " --run_time " + str(run_time_ind) + \
                                 " --tracking_dir " + UGER_cbp_dir + \
                                 " --project_name broad --bash_header /broad/IDP-Dx_work/nirmalya/bash_header"
 
